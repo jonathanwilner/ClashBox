@@ -6,7 +6,7 @@
       {
         "name": "default",
         "compatibleSdkVersion": "6.1.0(23)",
-        "targetSdkVersion": "6.1.1(24)",
+        "targetSdkVersion": "6.1.0(23)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {
@@ -23,7 +23,7 @@
       {
         "name": "release",
         "compatibleSdkVersion": "6.1.0(23)",
-        "targetSdkVersion": "6.1.1(24)",
+        "targetSdkVersion": "6.1.0(23)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {

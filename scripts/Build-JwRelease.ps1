@@ -1,5 +1,6 @@
 param(
   [string]$DevEcoHome = 'C:\Huawei\DevEcoStudio\DevEco Studio 26.0.0',
+  [string]$SdkRoot = 'C:\Users\jonathan\Downloads\hap-resign-work\deveco26-sdk-api23-shim',
   [string]$OhpmRegistry = 'https://repo.harmonyos.com/ohpm/'
 )
 
@@ -7,12 +8,16 @@ $ErrorActionPreference = 'Stop'
 $env:JAVA_TOOL_OPTIONS = '-Dfile.encoding=UTF-8 -Duser.language=zh -Duser.country=CN'
 $env:npm_config_registry = 'https://registry.npmmirror.com'
 $env:NPM_CONFIG_REGISTRY = 'https://registry.npmmirror.com'
+$env:DEVECO_SDK_HOME = $SdkRoot
+$env:HARMONYOS_SDK_HOME = $SdkRoot
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $ohpm = Join-Path $DevEcoHome 'tools\ohpm\bin\ohpm.bat'
 $hvigorw = Join-Path $DevEcoHome 'tools\hvigor\bin\hvigorw.bat'
+$nodeDirectory = Join-Path $DevEcoHome 'tools\node'
+$env:Path = "$nodeDirectory;$env:Path"
 
-foreach ($tool in @($ohpm, $hvigorw)) {
+foreach ($tool in @($ohpm, $hvigorw, $SdkRoot)) {
   if (-not (Test-Path -LiteralPath $tool)) {
     throw "Required DevEco tool not found: $tool"
   }
@@ -20,6 +25,10 @@ foreach ($tool in @($ohpm, $hvigorw)) {
 
 Push-Location $projectRoot
 try {
+  $escapedSdkRoot = $SdkRoot.Replace('\', '\\')
+  Set-Content -LiteralPath (Join-Path $projectRoot 'local.properties') `
+    -Value "sdk.dir=$escapedSdkRoot" -Encoding ASCII
+
   & $ohpm install --registry $OhpmRegistry
   if ($LASTEXITCODE -ne 0) { throw "ohpm install failed with exit code $LASTEXITCODE" }
 

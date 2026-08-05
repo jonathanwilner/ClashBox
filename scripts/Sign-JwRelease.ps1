@@ -28,7 +28,7 @@ New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
   -keyPwd $keyPassword -appCertFile $Certificate -profileFile $Profile `
   -profileSigned 1 -inFile $UnsignedHap -signAlg SHA256withECDSA `
   -keystoreFile $Keystore -keystorePwd $storePassword -outFile $OutputHap `
-  -compatibleVersion 24 -signCode 1
+  -compatibleVersion 23 -signCode 1
 if ($LASTEXITCODE -ne 0) { throw "HAP signing failed with exit code $LASTEXITCODE" }
 
 $verifyRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('clashbox-jw-verify-' + [guid]::NewGuid().ToString('N'))

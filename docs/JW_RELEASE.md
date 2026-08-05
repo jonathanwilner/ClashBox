@@ -8,7 +8,8 @@ before each release and review every submodule pointer explicitly.
 
 - Current upstream ClashBox application and prebuilt ARM64 proxy core.
 - Current reviewed `xb_components` revision.
-- HarmonyOS 6.1 API 23+ ARM64 packaging.
+- HarmonyOS 6.1 API 23 ARM64 packaging using Monaco's isolated API 23 SDK
+  metadata shim with DevEco Studio 26 tools.
 - Correct notification helper argument ordering.
 - China-reachable latency probe and Wilner-hosted update manifest.
 - A monotonically increasing `versionCode` and numeric `versionName`.
