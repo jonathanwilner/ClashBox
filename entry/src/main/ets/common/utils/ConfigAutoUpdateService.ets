@@ -224,7 +224,6 @@ export class ConfigAutoUpdateService {
             if (this.context) {
               await Xb_NotificationUtils.publishTextNotification(
                 (this.context as common.UIAbilityContext),
-                Number(profile.id),
                 {
                   title: "ClashBox",
                   text: `${Xb_GetResourceString($r('app.string.Configuration'),
@@ -232,7 +231,8 @@ export class ConfigAutoUpdateService {
                     this.context)}`
                 },
                 notificationManager.SlotType.SERVICE_INFORMATION,
-                { abilityName: 'EntryAbility' }
+                { abilityName: 'EntryAbility' },
+                Number(profile.id)
               )
             }
 
@@ -250,13 +250,13 @@ export class ConfigAutoUpdateService {
           if (this.context) {
             await Xb_NotificationUtils.publishTextNotification(
               (this.context as common.UIAbilityContext),
-              Number(profile.id),
               {
                 title: "ClashBox",
-                text: error
+                text: `${error}`
               },
               notificationManager.SlotType.SERVICE_INFORMATION,
-              { abilityName: 'EntryAbility' }
+              { abilityName: 'EntryAbility' },
+              Number(profile.id)
             )
           }
         }
@@ -318,4 +318,3 @@ export class ConfigAutoUpdateService {
 }
 
 export default new ConfigAutoUpdateService();
-

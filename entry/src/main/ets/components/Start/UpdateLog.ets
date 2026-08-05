@@ -81,6 +81,10 @@ export struct UpdateLog {
 const UpdateLogData: TCItemProp[] = [
   // 名称：版本号+时间
   {
+    title: '1.7.5 JW 2026.8.5',
+    content: '* 基于最新 ClashBox master，包含 HarmonyOS IPv6 VPN 路由及 TUN DNS 劫持修复\n* 更新 xb_components，修复窗口、通知、声音及震动问题\n* 使用中国大陆可访问的延迟检测地址\n* 使用 Wilner 自托管更新清单及 HAP 下载地址\n* 面向 HarmonyOS 6.1 API 23+ ARM64 设备构建'
+  },
+  {
     title: '1.7.4 2026.1.18',
     content:'MiHoMo核心部分：\n* 更新核心为最新 \n* 支持本地网卡注入（需API22） \n 配置修复：\n* 修复配置文件编辑功能保存数据错误问题 \n* 优化YAML解析性能 \n* 优化代理页节点列表过多掉帧问题 \n* 支持大于5M的配置文件下载，最大100M \n访问控制部分：\n* 访问控制新增在线搜索功能 \n* 修复访问控制全选后失效问题 \n* 访问控制勾选应用置顶显示 \n* 访问控制添加本地图标显示 \n* 访问控制黑名单限制勾选64个，白名单限制勾选62个(因为系统BUG) \n其他部分：\n* 其他体验bug修复'
   },

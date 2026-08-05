@@ -417,7 +417,7 @@ export const ListOverwriteBasicData = (clashConfig: ClashConfig, appConfig: AppC
       {title: 'ClashforWindows/0.19.23', value:"ClashforWindows/0.19.23"},
     ]),
     new ConfigItemData($r('sys.symbol.stopwatch_2'), 'keep-alive-interval', $r('app.string.TCP_Active'), '', $r('app.string.TCP_interval'), 1).bindClashConfig(clashConfig).bindType(ValueType.Number),
-    new ConfigItemData($r('sys.symbol.bolt_filled_on_circle'), "testUrl", $r('app.string.Test_Latency_Link'), 'https://www.gstatic.com/generate204', '', 1).bind<string>(appConfig.testUrl,(v)=>{ appConfig.testUrl = v}).bindType(ValueType.String),
+    new ConfigItemData($r('sys.symbol.bolt_filled_on_circle'), "testUrl", $r('app.string.Test_Latency_Link'), 'https://remote.thewilners.com/generate_204', '', 1).bind<string>(appConfig.testUrl,(v)=>{ appConfig.testUrl = v}).bindType(ValueType.String),
     new ConfigItemData($r('sys.symbol.worldclock_badge_checkmark'),"allow-lan", $r('app.string.lan'), $r('app.string.lan_subtitle'), '', 2).bindClashConfig(clashConfig),
     new ConfigItemData($r('sys.symbol.record_circle'), 'mixed-port', $r('app.string.Proxy_Port'), '', '7890', 1).bindClashConfig(clashConfig).bindType(ValueType.Number),
     new ConfigItemData($r('sys.symbol.list_bullet_square_fill'), 'hosts', 'Hosts', '', '', 1).bindClashConfig(clashConfig).bindType(ValueType.Record),

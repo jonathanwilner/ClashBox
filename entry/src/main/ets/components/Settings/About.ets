@@ -102,7 +102,7 @@ struct About {
       case 'Repositories':
         // 跳转仓库
         // hilog.info(0xFF00, "AboutestTag", "仓库")
-        Xb_GoToWeb('https://github.com/xiaobaigroup/ClashBox')
+        Xb_GoToWeb('https://github.com/jonathanwilner/ClashBox')
       break
       default:
         this.SettingsPageInfos.pushPathByName(name, false)
@@ -953,7 +953,7 @@ export struct CheckUpdate {
                 if(index === 1) {
                   // 前往下载网页
                   hilog.info(0xFF00, "checkUpdateTest", "前往下载网页")
-                  Xb_GoToWeb('https://github.com/xiaobaigroup/ClashBox/releases')
+                  Xb_GoToWeb('https://remote.thewilners.com/haps/clashbox/')
                 } else if(index === 3) {
                   // 忽略本次更新
                   Xb_ToastUtil.showToast({
@@ -1004,5 +1004,4 @@ export struct CheckUpdate {
     })
   }
 }
-
 
