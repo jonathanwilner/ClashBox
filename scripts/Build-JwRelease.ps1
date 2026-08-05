@@ -35,8 +35,8 @@ try {
   & $hvigorw clean --no-daemon
   if ($LASTEXITCODE -ne 0) { throw "Hvigor clean failed with exit code $LASTEXITCODE" }
 
-  & $hvigorw assembleHap --mode project -p product=release -p buildMode=release --no-daemon --stacktrace
-  if ($LASTEXITCODE -ne 0) { throw "Hvigor assembleHap failed with exit code $LASTEXITCODE" }
+  & $hvigorw assembleApp --mode project -p product=release -p buildMode=release --no-daemon --stacktrace
+  if ($LASTEXITCODE -ne 0) { throw "Hvigor assembleApp failed with exit code $LASTEXITCODE" }
 
   $haps = Get-ChildItem -LiteralPath (Join-Path $projectRoot 'entry\build') -Recurse -File -Filter '*unsigned.hap' |
     Sort-Object LastWriteTime -Descending

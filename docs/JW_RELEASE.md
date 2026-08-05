@@ -26,8 +26,9 @@ Use DevEco Studio 26 and its explicit tools. From the repository root:
 powershell -ExecutionPolicy Bypass -File .\scripts\Build-JwRelease.ps1
 ```
 
-The script installs OHPM dependencies from Huawei's China registry and creates
-an unsigned release HAP. It never reads or embeds signing credentials.
+The script installs OHPM dependencies from Huawei's China registry, runs the
+DevEco 26 project-level `assembleApp` graph, and returns the generated unsigned
+entry HAP. It never reads or embeds signing credentials.
 
 ## Sign
 
