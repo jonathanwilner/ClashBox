@@ -15,9 +15,12 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $ohpm = Join-Path $DevEcoHome 'tools\ohpm\bin\ohpm.bat'
 $hvigorw = Join-Path $DevEcoHome 'tools\hvigor\bin\hvigorw.bat'
 $nodeDirectory = Join-Path $DevEcoHome 'tools\node'
-$env:Path = "$nodeDirectory;$env:Path"
+$javaHome = Join-Path $DevEcoHome 'jbr'
+$javaDirectory = Join-Path $javaHome 'bin'
+$env:JAVA_HOME = $javaHome
+$env:Path = "$nodeDirectory;$javaDirectory;$env:Path"
 
-foreach ($tool in @($ohpm, $hvigorw, $SdkRoot)) {
+foreach ($tool in @($ohpm, $hvigorw, $SdkRoot, (Join-Path $javaDirectory 'java.exe'))) {
   if (-not (Test-Path -LiteralPath $tool)) {
     throw "Required DevEco tool not found: $tool"
   }
