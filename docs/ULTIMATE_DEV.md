@@ -36,3 +36,15 @@ install and launch through HDC. Check VPN authorization and actual routing
 before claiming the build works on the device. Publish the signed development
 artifact only after verification; do not update the stable latest manifest
 before physical acceptance. Preserve the existing installed app and its data.
+
+## Build result
+
+DevEco assembleApp succeeded on 16 October 2026 with exit code 0.
+Published log: https://nix.thewilners.com/machines/armstrong/logs/build-clashbox-ultimate.txt
+Unsigned HAP: /home/jonathan/artifacts/clashbox-ultimate-20261016/ClashBox-JW-1.7.6-arm64-unsigned.hap
+Size: 120933347 bytes.
+SHA-256: 9ee02787c2dd67908fa5e4c7291f78f40744a7e14d9c543fb82f4e268dd97378
+Package metadata confirms version 1.7.6, versionCode 1007060, and 2in1 support.
+ARM64 engine and interface libraries are present. The component dependency
+also contributes two x86_64 libraries; this is not a complete x86_64 build.
+The package remains unsigned and is not ready to install on a retail device.
