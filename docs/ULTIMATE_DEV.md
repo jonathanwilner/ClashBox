@@ -24,11 +24,11 @@ The retained xb_components revision is 8c84b2ca7392819fdfcb04c28ca99e3ebff6037d.
 
 ## Signing and acceptance
 
-Signing requires a current Huawei developer login and a profile authorizing
-the exact physical device. The saved Monaco session failed refresh on
-16 October 2026, and HDC listed no connected devices. A fresh Huawei login
-page was opened in Monaco Chrome. Obtain the current wireless debugging
-address, verify the device model and UDID privately, then issue the profile.
+Huawei developer authentication was restored on 16 October 2026. The current
+account uses de.devecostudio.huawei.com. Live certificate and device API calls
+returned success with empty lists. HDC also reports no connected devices.
+The next required input is the Ultimate's wireless debugging IP and port.
+Verify its model and UDID privately, register it, and issue a matching profile.
 Never commit authentication snapshots, signing passwords, keys, or profiles.
 
 Use the protected Monaco signing helper from nixos-amd, verify-app, then
@@ -48,3 +48,21 @@ Package metadata confirms version 1.7.6, versionCode 1007060, and 2in1 support.
 ARM64 engine and interface libraries are present. The component dependency
 also contributes two x86_64 libraries; this is not a complete x86_64 build.
 The package remains unsigned and is not ready to install on a retail device.
+
+## Reliable Huawei callback
+
+Use `scripts/huawei-auth-callback.mjs AUTH_JSON STATUS_JSON de` on Monaco before
+opening the DevEco authorization page with port 8888. Keep the process running.
+The listener binds only to 127.0.0.1 and remains available for 30 minutes.
+It exchanges the temporary token inside the callback request, accepts Huawei's
+POST body, and supports a plain-text JWT response. It saves the session only
+after the userInfo access token is present. Status output contains no tokens.
+An existing auth file is backed up with a timestamp before replacement.
+Use `cn` only when authorizing a mainland account. The callback's site field,
+when provided, selects the exchange region.
+
+The previous five-minute receiver timed out before login completed. Separating
+callback capture from exchange also allowed short-lived tokens to expire.
+The new flow was validated against Huawei: callback status authenticated and
+certificate/device requests both returned Huawei code 0. Device registration,
+signing, and installation remain pending the physical device connection.
