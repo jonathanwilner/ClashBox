@@ -96,3 +96,17 @@ Installation, launch, VPN authorization, and traffic routing on the physical
 Ultimate remain unverified. Do not uninstall the existing app to resolve a
 signature mismatch: retain its data and investigate the installed signer first.
 The stable latest manifest remains unchanged.
+
+## Permission-profile correction, 17 October 2026 UTC
+
+Physical install of the first signed package failed with 9568289 for
+`ohos.permission.GET_IP_MAC_INFO`. The proxy_core HAR contributes this
+restricted permission to the final HAP. Include it with
+`--acl ohos.permission.GET_IP_MAC_INFO` when generating the Huawei profile.
+
+Corrected download: https://remote.thewilners.com/haps/ClashBox-JW-1.7.6-Ultimate-acl-signed.hap
+SHA-256: e832323bffd7638129ae3166002ee038d9468d071fbaa29271c602ee47be433b
+DevEco verify-app and the extracted profile CMS signature passed. The profile
+authorizes exactly the Ultimate UDID and explicitly includes GET_IP_MAC_INFO
+in allowed-acls. Source and unsigned HAP are unchanged. Physical re-install
+and VPN acceptance remain pending. Session: sign-clashbox-ultimate-acl.
