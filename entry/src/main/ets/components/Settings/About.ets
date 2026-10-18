@@ -396,9 +396,9 @@ struct About {
                     } else if (itemChild.sign === 0) {
                      if (itemChild.name === 'ApplicationVersion') {
                        hilog.info(0xFF00, "AboutClickTag", "前: %{public}d", this.clickCount)
-                       // TODO 高级模式
-                       // this.clickCount++
-                       // this.onClickCount()
+                       // Five version taps expose the existing advanced settings.
+                       this.clickCount++
+                       this.onClickCount()
                        hilog.info(0xFF00, "AboutClickTag", "后: %{public}d", this.clickCount)
                      }
                    }

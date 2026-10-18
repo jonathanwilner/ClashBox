@@ -110,3 +110,25 @@ DevEco verify-app and the extracted profile CMS signature passed. The profile
 authorizes exactly the Ultimate UDID and explicitly includes GET_IP_MAC_INFO
 in allowed-acls. Source and unsigned HAP are unchanged. Physical re-install
 and VPN acceptance remain pending. Session: sign-clashbox-ultimate-acl.
+
+## Advanced settings and AppGallery version comparison, 18 October 2026
+
+The private Fold build remains based on public upstream `master` e036a6a3.
+The AppGallery phone app is a separate bundle, `org.xbgroup.clashbox`, version
+2.1.0 (2010016). The public source bundle is `org.xbgroup.clashboxLTS`.
+Upstream's published branches and tags do not provide the 2.1.0 UI source.
+
+The public source defaults advanced settings to disabled and comments out its
+version-tap unlock handler. The private patch restores that handler: open
+Settings, About, then tap Application version five times. Existing advanced
+and experimental settings become available. This does not add the newer
+phone app's Tailscale setup page.
+
+The packaged native engine contains Tailscale outbound symbols, but runtime
+support requires testing. Upstream issue 154 reports a HarmonyOS netlink
+permission failure and the maintainer identifies version 2.1.0 as the fix:
+https://github.com/xiaobaigroup/ClashBox/issues/154
+Do not claim that this older native library contains that fix.
+
+The restored handler requires a rebuilt, signed HAP and physical UI acceptance
+before it can be described as installed.
