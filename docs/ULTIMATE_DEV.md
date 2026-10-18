@@ -132,3 +132,14 @@ Do not claim that this older native library contains that fix.
 
 The restored handler requires a rebuilt, signed HAP and physical UI acceptance
 before it can be described as installed.
+
+The advanced-settings build and signing passed on 18 October 2026. Sessions
+`build-clashbox-advanced-20261018` and `sign-clashbox-advanced-20261018` both
+report exit 0 on the Armstrong build dashboard. The signed artifact is
+`/home/jonathan/artifacts/clashbox-advanced-20261018/ClashBox-JW-1.7.6-Ultimate-advanced-signed.hap`.
+SHA-256: `a66bf488a3ab30443b10f7035fe23f1954e020172b61c2dcc195184a6e6a6e46`.
+DevEco verify-app passed. The extracted profile CMS content signature passed
+OpenSSL verification with `-noverify`; this does not establish CA trust.
+The existing Ultimate profile authorizes one device, the LTS bundle, and
+`ohos.permission.GET_IP_MAC_INFO`. Installation and UI acceptance are pending
+because the Fold is offline. The stable manifest remains unchanged.
