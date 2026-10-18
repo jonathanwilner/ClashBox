@@ -141,5 +141,33 @@ SHA-256: `a66bf488a3ab30443b10f7035fe23f1954e020172b61c2dcc195184a6e6a6e46`.
 DevEco verify-app passed. The extracted profile CMS content signature passed
 OpenSSL verification with `-noverify`; this does not establish CA trust.
 The existing Ultimate profile authorizes one device, the LTS bundle, and
-`ohos.permission.GET_IP_MAC_INFO`. Installation and UI acceptance are pending
-because the Fold is offline. The stable manifest remains unchanged.
+`ohos.permission.GET_IP_MAC_INFO`. Installation and UI acceptance were subsequently completed as recorded below.
+The stable manifest remains unchanged.
+
+
+## Physical Fold acceptance, 18 October 2026 UTC
+
+The advanced-settings HAP above installed successfully for user 101 on the
+HPR-W72 at `100.117.242.38:35833`. About reports 1.7.6 (1007060) debug and
+shows Experimental Function enabled. Evidence:
+https://debug.thewilners.com/#shot=20261018T231923Z-armstrong-clashbox-network-20261018-4f15079540-0d7521fd
+
+An isolated `Fold-Hysteria-Tailscale` profile was imported from a temporary
+loopback HDC reverse tunnel. It used the existing tailnet authentication key,
+hostname `fold-clashbox`, and an explicit 100.64.0.0/10 Tailscale outbound rule.
+The native engine failed with `tsnet: route ip+net: netlinkrib: permission denied`.
+No fold-clashbox node registered. This reproduces the older engine limitation;
+the settings unlock does not fix the native networking implementation.
+Failure and successful Hysteria route evidence:
+https://debug.thewilners.com/#shot=20261018T233046Z-armstrong-clashbox-network-20261018-8d36f5fffa-3c8cf045
+
+Restored the `China-Hysteria` profile. Authenticated SSH through the Fold's
+SOCKS proxy returned `armstrong` for both 192.168.2.120 via Hysteria and
+100.100.175.37 via the existing MeshArc connection. The verified tailnet is
+krustyjonez@gmail.com. These checks exercise the device proxy; they do not
+establish system-wide VPN routing or a Fold-native Mosh session.
+The isolated test profile remains inactive for diagnosis. Authentication keys
+are excluded from this document and source control.
+
+Remaining: integrate a HarmonyOS-compatible native Tailscale engine, rebuild
+and sign it for this device, then verify node registration and TCP/UDP traffic.
