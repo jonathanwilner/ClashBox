@@ -1,10 +1,10 @@
 # Fold embedded Tailscale development build, 20 October 2026
 
-Status: the visible Tailscale settings and VPN protection candidate is being
-validated offline. Earlier candidates confirmed profile/controller startup after
-IPC framing repair. Full embedded Tailscale enrollment, automatic VPN routing,
-and the new settings page still require device acceptance. Root is restoring the
-simpler MeshArc path while this candidate is completed.
+Status: the visible Tailscale settings candidate compiled, passed offline tests,
+and signed successfully. Source is committed and pushed. Full embedded Tailscale
+enrollment, automatic VPN routing, and the settings page still require device
+acceptance. Preserve the working MeshArc recovery path until coordinated cutover.
+
 ## Source changes
 
 ClashBox 2.1.0 was unavailable for this build. The retained candidate backports
@@ -255,3 +255,37 @@ flag and stop the newly acquired VPN before reporting failure.
 Device UI, interactive enrollment, VPN cutover and routed-service acceptance
 remain pending. The source tests and signed package do not establish device
 success. The Fold was not changed by this build lane.
+
+## Signed settings candidate
+
+The source revision is `b54e1a21`, branch
+`fix/fold-embedded-tailscale-20261020`. The signed HAP is:
+
+`/home/jonathan/artifacts/clashbox-fold-tailscale-settings-20261020/ClashBox-JW-1.7.6-jw-ts-Ultimate-signed.hap`
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Signed HAP, 137996993 bytes | `357a33b12f5825acf4255539db861e6c9d3c14fb8fa40abf0b58afa2798e15c8` |
+| Packaged ARM64 native library | `06fb1eed7a993b5fc8a6535abb8a20e9ccf7fd4a2d4903f59c188a991f2567ec` |
+| Unstripped native library | `1760346fe078f6780a5b64cd84b49a78ad0c15ef55086c5182898717408d8a1f` |
+
+Protected `verify-app` verification passed. The packaged native library contains
+two corrected 32-byte TLS sequences and zero old 16-byte sequences. Compiled
+ArkTS bytecode contains the settings page, profile helper, status RPC, browser
+sign-in action and protected profile-reload path.
+
+The following completed sessions appear as succeeded with exit code zero in the
+canonical build dashboard manifest:
+
+- [Native build](https://nix.thewilners.com/machines/armstrong/logs/build-clashbox-tailscale-reviewed.txt)
+- [App compilation, signing and verification](https://nix.thewilners.com/machines/armstrong/logs/build-sign-clashbox-tailscale-release.txt)
+- [Eleven ArkTS production-method/profile tests](https://nix.thewilners.com/machines/armstrong/logs/test-clashbox-tailscale-settings-final.txt)
+- [Two core status wrapper/parser tests](https://nix.thewilners.com/machines/armstrong/logs/test-clashbox-status-wrapper-final.txt)
+- [Native IPC framing tests](https://nix.thewilners.com/machines/armstrong/logs/test-clashbox-ipc-framing-final.txt)
+- [Native IPC lifetime tests with race detector](https://nix.thewilners.com/machines/armstrong/logs/test-clashbox-ipc-lifetime-race.txt)
+
+An earlier packaging run lost its local log/status when Armstrong storage filled.
+The complete release job above ran again after space recovered. Its signed bytes
+were retrieved and hash-matched locally. Device installation, settings-page visual
+proof, enrollment, state-lock-free restart and routed-service acceptance are the
+remaining checks owned by the device lane.
