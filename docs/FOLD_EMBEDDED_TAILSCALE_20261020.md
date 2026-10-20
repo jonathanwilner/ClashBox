@@ -1,17 +1,17 @@
 # Fold embedded Tailscale development build, 20 October 2026
 
 Status: native compilation, release packaging, signing and binary inspection pass.
-Physical device acceptance is pending. The latest signed candidate has not been
-validated on the Fold because wireless HDC transport became unavailable. Earlier
-candidates crashed during native startup. Do not promote this candidate as a
-working or recommended release until the device checks below pass.
+The corrected 32-byte TLS candidate launches and exposes the core API on the Fold.
+A separate inbound access-control regression caused immediate proxy disconnects.
+A runtime ACL patch restored Google and Baidu HTTPS with status 200. The durable
+ACL candidate still requires installation and restart acceptance. Embedded
+Tailscale registration and routing acceptance remain pending.
 
 ## Source changes
 
 ClashBox 2.1.0 was unavailable for this build. The retained candidate backports
 the native changes into version `1.7.6-jw-ts` (`1007061`), bundle
-`org.xbgroup.clashboxLTS`. The 32-byte TLS repair has not been installed on the
-Fold.
+`org.xbgroup.clashboxLTS`. The 32-byte TLS repair is installed on the Fold.
 The HarmonyOS bridge supplies local interface names, indices, MTUs and addresses
 from `connection.getAllNets()` and `getConnectionProperties()` before loading a
 profile. The former neighbor-table implementation described remote neighbors.
@@ -49,7 +49,7 @@ resolver can push below the adjusted SP. The Python source patch accepts the
 original implementation and first repair and is idempotent for the final form.
 Disassembly confirms the corrected reservation/restoration in both helpers.
 
-## Exact retained candidate
+## Previous TLS-only candidate
 
 Local artifact directory:
 `/home/jonathan/artifacts/clashbox-fold-native-tls32-20261020`.
@@ -77,12 +77,51 @@ The HarmonyOS interface-cache unit test passes on the Dropshot host:
 This host test verifies cache behavior; device interface API behavior remains
 pending. Shell syntax, patch migration/idempotency and whitespace checks pass.
 
+## Inbound access-control compatibility repair
+
+The newer core rejects accepted mixed-port clients when `lan-allowed-ips` is
+null. Older ClashBox settings omit this field. The wrapper passed the resulting
+nil list to `inbound.SetAllowedIPs`, which closed connections before HTTP CONNECT
+parsing. This produced immediate disconnects and no tracked proxy connections.
+
+`defaultLanAllowedIPs` restores the core default (`0.0.0.0/0`, `::/0`) for nil
+lists during raw profile mapping and listener refresh. Explicit empty lists and
+custom prefix lists retain their policy. `allow-lan` and bind-address settings
+continue to control listener exposure. The JSON regression test covers omitted,
+null, explicit empty and custom prefix inputs, including IPv4 and IPv6 clients.
+
+The runtime ACL patch has confirmed Google and Baidu HTTPS status 200 through
+the Fold mixed port. The new signed candidate makes the fix durable across profile
+reload and application restart. Candidate installation and restart verification
+remain pending.
+
+## Signed ACL candidate
+
+Local artifact directory:
+`/home/jonathan/artifacts/clashbox-fold-native-acl-20261020`.
+
+| File | SHA-256 |
+| --- | --- |
+| `ClashBox-JW-1.7.6-jw-ts-Ultimate-signed.hap` | `306687454ee67e6f286834b6cd8879dc40d4fdc42d6225b12e9a19404feee84e` |
+| `libflclash.so` before packaging | `a4fc86188a4aea2ab95aec0ff7ae46473a73966e717dea629bf37f7f6de4d0dc` |
+| `libflclash-packaged.so` extracted from signed HAP | `10ce54492ec5498aef1f0bdccefeaa73e29035e8ba2b50e33a41caec1819e705` |
+
+Metadata confirms `1.7.6-jw-ts` / `1007061`. The packaged library retains exactly
+two corrected 32-byte TLS helper sequences and zero previous helper sequences.
+The focused JSON ACL regression test, native build and protected package/sign job
+passed. Published dashboard jobs:
+
+- [ACL regression test](https://nix.thewilners.com/machines/armstrong/logs/test-clashbox-fold-inbound-acl.txt)
+- [Native ACL build](https://nix.thewilners.com/machines/armstrong/logs/build-clashbox-fold-native-acl.txt)
+- [ACL release package and protected signing](https://nix.thewilners.com/machines/armstrong/logs/build-sign-clashbox-fold-acl.txt)
+
 ## Required device acceptance
 
-Restore wireless HDC first. Install the retained signed candidate while
-preserving application data. Confirm the process stays alive after launch and
-profile load, with no new Faultlogger crash. Activate an embedded Tailscale
-profile, confirm interface discovery and registration, and test uncached DNS,
-HTTPS, tailnet destinations and the intended China/US routing. Verify the single
-system VPN arrangement and browser traffic path. Runtime success remains
-unconfirmed until these checks complete.
+Install the ACL candidate while preserving application data. Confirm the process
+stays alive after launch and profile load, with no new Faultlogger crash. Verify
+Google and Baidu through the mixed port after restarting with the existing saved
+profile. Activate an embedded Tailscale profile, confirm interface discovery and
+registration, and test uncached DNS, HTTPS, tailnet destinations and the intended
+China/US routing. Verify the single system VPN arrangement and browser traffic
+path. Embedded Tailscale runtime success remains unconfirmed until these checks
+complete.

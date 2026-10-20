@@ -232,6 +232,7 @@ func overwriteConfig(targetConfig *config.RawConfig, patchConfig config.RawConfi
 	targetConfig.MixedPort = patchConfig.MixedPort
 	targetConfig.FindProcessMode = patchConfig.FindProcessMode
 	targetConfig.AllowLan = patchConfig.AllowLan
+	targetConfig.LanAllowedIPs = defaultLanAllowedIPs(targetConfig.LanAllowedIPs)
 	targetConfig.Mode = patchConfig.Mode
 	targetConfig.Tun.Enable = patchConfig.Tun.Enable
 	targetConfig.Tun.Device = patchConfig.Tun.Device
@@ -316,7 +317,7 @@ func updateListeners(force bool) {
 	listener.PatchInboundListeners(listeners, tunnel.Tunnel, true)
 	listener.SetAllowLan(general.AllowLan)
 	inbound.SetSkipAuthPrefixes(general.SkipAuthPrefixes)
-	inbound.SetAllowedIPs(general.LanAllowedIPs)
+	inbound.SetAllowedIPs(defaultLanAllowedIPs(general.LanAllowedIPs))
 	inbound.SetDisAllowedIPs(general.LanDisAllowedIPs)
 	listener.SetBindAddress(general.BindAddress)
 	listener.ReCreateHTTP(general.Port, tunnel.Tunnel)
