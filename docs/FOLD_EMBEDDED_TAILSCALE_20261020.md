@@ -1,24 +1,5 @@
 # Fold embedded Tailscale development build, 20 October 2026
 
-## Imported profile path correction
-
-Device acceptance found that the visible imported profile was missing from the
-native core. ArkTS saves profiles to `profiles/<id>/config.yaml`, while the native
-wrapper read `profiles/<id>.yaml` and silently used the default configuration
-when that path was absent. The wrapper now prefers the actual ArkTS path and
-retains the flat path only as a legacy fallback. The regression test verifies a
-missing profile path, an older flat file, and precedence of a current saved
-profile over a stale flat copy. The same path is used for full configuration
-loading before applying UI overrides, including Tailscale, DNS and rules.
-
-Before Play, mixed-port listeners are intentionally stopped and the UI's default
-external-controller is blank. Those ports do not establish whether the profile
-loaded. The Tailscale settings status action uses the native local socket and can
-check the adapter before VPN acquisition. Physical VPN startup supplies the
-acquired file descriptor directly to `StartTUN`; the saved raw `tun.enable=false`
-does not prevent this startup path. Device acceptance of this correction remains
-pending.
-
 Status: the visible Tailscale settings candidate compiled, passed offline tests,
 and signed successfully. Source is committed and pushed. Full embedded Tailscale
 enrollment, automatic VPN routing, and the settings page still require device
