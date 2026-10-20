@@ -1,0 +1,290 @@
+diff --git a/adapter/outbound/tailscale.go b/adapter/outbound/tailscale.go
+index b4232df8..c78b563f 100644
+--- a/adapter/outbound/tailscale.go
++++ b/adapter/outbound/tailscale.go
+@@ -18,6 +18,7 @@ import (
+ 	"github.com/metacubex/mihomo/component/iface/anet"
+ 	"github.com/metacubex/mihomo/component/resolver"
+ 	C "github.com/metacubex/mihomo/constant"
++ "github.com/metacubex/mihomo/constant/features"
+ 	"github.com/metacubex/mihomo/dns"
+ 	"github.com/metacubex/mihomo/log"
+ 
+@@ -73,7 +74,7 @@ func init() {
+ 		hi.IPNVersion = fmt.Sprintf("%s-%s-%s", versionDotTxt, C.MihomoName, C.Version)
+ 	})
+ 	envknob.SetNoLogsNoSupport()
+-	if runtime.GOOS == "android" { // Android SDK 30 no longer permits Go's net.Interfaces to work (Issue 2293)
++	if runtime.GOOS == "android" || features.OHOS { // Android SDK 30 no longer permits Go's net.Interfaces to work (Issue 2293)
+ 		netmon.RegisterInterfaceGetter(func() (nif []netmon.Interface, err error) {
+ 			log.Debugln("[Tailscale] InterfaceGetter: start, IsForceAnet: %v", anet.IsForceAnet())
+ 			ifaces, err := anet.Interfaces()
+diff --git a/component/iface/anet/interface.go b/component/iface/anet/interface.go
+index 6068b031..e0c0bbfb 100644
+--- a/component/iface/anet/interface.go
++++ b/component/iface/anet/interface.go
+@@ -1,4 +1,4 @@
+-//go:build !android
++//go:build !android && !ohos
+ 
+ package anet
+ 
+diff --git a/component/iface/anet/interface_ohos.go b/component/iface/anet/interface_ohos.go
+new file mode 100644
+index 00000000..fca4fb6e
+--- /dev/null
++++ b/component/iface/anet/interface_ohos.go
+@@ -0,0 +1,46 @@
++//go:build ohos
++
++package anet
++
++import (
++ "fmt"
++ "net"
++ "sync"
++)
++
++var systemInterfaces struct {
++ sync.RWMutex
++ interfaces []net.Interface
++ addresses map[string][]net.Addr
++}
++
++// SetSystemInterfaces receives local link properties from HarmonyOS's public
++// connection API. Neighbor tables contain remote peers and cannot supply these.
++func SetSystemInterfaces(interfaces []net.Interface, addresses map[string][]net.Addr) {
++ systemInterfaces.Lock()
++ defer systemInterfaces.Unlock()
++ systemInterfaces.interfaces = append([]net.Interface(nil), interfaces...)
++ systemInterfaces.addresses = make(map[string][]net.Addr, len(addresses))
++ for name, addrs := range addresses { systemInterfaces.addresses[name] = append([]net.Addr(nil), addrs...) }
++}
++
++func Interfaces() ([]net.Interface, error) {
++ systemInterfaces.RLock()
++ defer systemInterfaces.RUnlock()
++ if len(systemInterfaces.interfaces) == 0 { return nil, fmt.Errorf("HarmonyOS local link properties have not been supplied") }
++ return append([]net.Interface(nil), systemInterfaces.interfaces...), nil
++}
++
++func InterfaceAddrs() ([]net.Addr, error) {
++ systemInterfaces.RLock()
++ defer systemInterfaces.RUnlock()
++ var result []net.Addr
++ for _, addrs := range systemInterfaces.addresses { result = append(result, addrs...) }
++ return result, nil
++}
++
++func InterfaceAddrsByInterface(ifi *net.Interface) ([]net.Addr, error) {
++ systemInterfaces.RLock()
++ defer systemInterfaces.RUnlock()
++ return append([]net.Addr(nil), systemInterfaces.addresses[ifi.Name]...), nil
++}
+diff --git a/component/iface/anet/interface_ohos_test.go b/component/iface/anet/interface_ohos_test.go
+new file mode 100644
+index 00000000..c0f59f6b
+--- /dev/null
++++ b/component/iface/anet/interface_ohos_test.go
+@@ -0,0 +1,27 @@
++//go:build ohos
++
++package anet
++
++import (
++ "net"
++ "testing"
++)
++
++func TestHarmonyLocalLinkAddresses(t *testing.T) {
++ _, v4, _ := net.ParseCIDR("172.20.2.12/16")
++ v4.IP = net.ParseIP("172.20.2.12")
++ _, v6, _ := net.ParseCIDR("2001:db8::12/64")
++ v6.IP = net.ParseIP("2001:db8::12")
++ input := []net.Interface{{Index: 7, Name: "wlan0", MTU: 1500, Flags: net.FlagUp}}
++ SetSystemInterfaces(input, map[string][]net.Addr{"wlan0": {v4, v6}})
++ input[0].Name = "changed"
++ interfaces, err := Interfaces()
++ if err != nil || len(interfaces) != 1 || interfaces[0].Name != "wlan0" { t.Fatalf("interfaces = %v, %v", interfaces, err) }
++ addresses, err := InterfaceAddrsByInterface(&interfaces[0])
++ if err != nil || len(addresses) != 2 || addresses[0].String() != "172.20.2.12/16" || addresses[1].String() != "2001:db8::12/64" { t.Fatalf("addresses = %v, %v", addresses, err) }
++ interfaces[0].Name = "changed"
++ again, _ := Interfaces()
++ if again[0].Name != "wlan0" { t.Fatal("returned interface slice aliases cache") }
++ SetSystemInterfaces(nil, nil)
++ if _, err := Interfaces(); err == nil { t.Fatal("missing initial link properties must return an error") }
++}
+diff --git a/component/iface/iface.go b/component/iface/iface.go
+index 8529f55e..61125e5e 100644
+--- a/component/iface/iface.go
++++ b/component/iface/iface.go
+@@ -11,7 +11,6 @@ import (
+ 
+ 	"github.com/metacubex/bart"
+ 
+-    "github.com/metacubex/mihomo/constant/features"
+ )
+ 
+ type Interface struct {
+@@ -35,23 +34,12 @@ type ifaceCache struct {
+ }
+ 
+ var caches = singledo.NewSingle[*ifaceCache](time.Second * 20)
+-var netInterfaces = []net.Interface{}
+-
+-// SetNetInterfaces injects interfaces from arkui.
+-func SetNetInterfaces(nets []net.Interface) {
+-	netInterfaces = nets
+-}
+-
+ func getCache() (*ifaceCache, error) {
+ 	value, err, _ := caches.Do(func() (*ifaceCache, error) {
+ 		ifaces, err := anet.Interfaces()
+-		if !features.OHOS {
+-			if err != nil {
+-				return nil, err
+-			}
+-		} else {
+-			ifaces = netInterfaces
+-		}
++		if err != nil {
++            return nil, err
++        }
+ 		cache := &ifaceCache{
+ 			ifMapByName: make(map[string]*Interface),
+ 			ifMapByAddr: make(map[netip.Addr]*Interface),
+diff --git a/component/iface/iface_ohos.go b/component/iface/iface_ohos.go
+new file mode 100644
+index 00000000..87cae57b
+--- /dev/null
++++ b/component/iface/iface_ohos.go
+@@ -0,0 +1,11 @@
++//go:build ohos
++
++package iface
++
++import (
++ "net"
++ "github.com/metacubex/mihomo/component/iface/anet"
++)
++
++// SetNetInterfaces retains the ArkUI bridge API. New callers provide addresses too.
++func SetNetInterfaces(nets []net.Interface) { anet.SetSystemInterfaces(nets, nil) }
+diff --git a/config/config.go b/config/config.go
+index f5ec9e40..80dc49d6 100644
+--- a/config/config.go
++++ b/config/config.go
+@@ -407,6 +407,7 @@ type RawTLS struct {
+ }
+ 
+ type RawConfig struct {
++ App map[string]any `yaml:"app" json:"app"`
+ 	Port                          int                     `yaml:"port" json:"port"`
+ 	SocksPort                     int                     `yaml:"socks-port" json:"socks-port"`
+ 	RedirPort                     int                     `yaml:"redir-port" json:"redir-port"`
+diff --git a/tunnel/statistic/tracker.go b/tunnel/statistic/tracker.go
+index 5ae12146..5165e2ae 100644
+--- a/tunnel/statistic/tracker.go
++++ b/tunnel/statistic/tracker.go
+@@ -17,6 +17,7 @@ import (
+ 
+ type Tracker interface {
+ 	ID() string
++ LastActivity() time.Time
+ 	Close() error
+ 	Info() *TrackerInfo
+ 	C.Connection
+@@ -37,6 +38,7 @@ type bucketWindow struct {
+ }
+ 
+ type TrackerInfo struct {
++ lastActivity atomic.Int64
+ 	UUID            uuid.UUID    `json:"id"`
+ 	Metadata        *C.Metadata  `json:"metadata"`
+ 	UploadTotal     atomic.Int64 `json:"upload"`
+@@ -75,6 +77,7 @@ func (tt *tcpTracker) Read(b []byte) (int, error) {
+ 	if tt.pushToManager {
+ 		tt.manager.PushDownloaded(tt.Chains().Last(), download)
+ 	}
++	tt.lastActivity.Store(time.Now().UnixNano())
+ 	tt.DownloadTotal.Add(download)
+ 	tt.TrackerInfo.MaxDownloadRate.Store(tt.downloadBucketWindow.updateMaxRate(download))
+ 	return n, err
+@@ -86,6 +89,7 @@ func (tt *tcpTracker) ReadBuffer(buffer *buf.Buffer) (err error) {
+ 	if tt.pushToManager {
+ 		tt.manager.PushDownloaded(tt.Chains().Last(), download)
+ 	}
++	tt.lastActivity.Store(time.Now().UnixNano())
+ 	tt.DownloadTotal.Add(download)
+ 	tt.TrackerInfo.MaxDownloadRate.Store(tt.downloadBucketWindow.updateMaxRate(download))
+ 	return
+@@ -96,7 +100,8 @@ func (tt *tcpTracker) UnwrapReader() (io.Reader, []N.CountFunc) {
+ 		if tt.pushToManager {
+ 			tt.manager.PushDownloaded(tt.Chains().Last(), download)
+ 		}
+-		tt.DownloadTotal.Add(download)
++		tt.lastActivity.Store(time.Now().UnixNano())
++	tt.DownloadTotal.Add(download)
+ 		tt.TrackerInfo.MaxDownloadRate.Store(tt.downloadBucketWindow.updateMaxRate(download))
+ 	}}
+ }
+@@ -107,6 +112,7 @@ func (tt *tcpTracker) Write(b []byte) (int, error) {
+ 	if tt.pushToManager {
+ 		tt.manager.PushUploaded(tt.Chains().Last(), upload)
+ 	}
++	tt.lastActivity.Store(time.Now().UnixNano())
+ 	tt.UploadTotal.Add(upload)
+ 	tt.TrackerInfo.MaxUploadRate.Store(tt.uploadBucketWindow.updateMaxRate(upload))
+ 	return n, err
+@@ -118,6 +124,7 @@ func (tt *tcpTracker) WriteBuffer(buffer *buf.Buffer) (err error) {
+ 	if tt.pushToManager {
+ 		tt.manager.PushUploaded(tt.Chains().Last(), upload)
+ 	}
++	tt.lastActivity.Store(time.Now().UnixNano())
+ 	tt.UploadTotal.Add(upload)
+ 	tt.TrackerInfo.MaxUploadRate.Store(tt.uploadBucketWindow.updateMaxRate(upload))
+ 	return
+@@ -128,7 +135,8 @@ func (tt *tcpTracker) UnwrapWriter() (io.Writer, []N.CountFunc) {
+ 		if tt.pushToManager {
+ 			tt.manager.PushUploaded(tt.Chains().Last(), upload)
+ 		}
+-		tt.UploadTotal.Add(upload)
++		tt.lastActivity.Store(time.Now().UnixNano())
++	tt.UploadTotal.Add(upload)
+ 		tt.TrackerInfo.MaxUploadRate.Store(tt.uploadBucketWindow.updateMaxRate(upload))
+ 	}}
+ }
+@@ -211,6 +219,7 @@ func (ut *udpTracker) ReadFrom(b []byte) (int, net.Addr, error) {
+ 	if ut.pushToManager {
+ 		ut.manager.PushDownloaded(ut.Chains().Last(), download)
+ 	}
++	ut.lastActivity.Store(time.Now().UnixNano())
+ 	ut.DownloadTotal.Add(download)
+ 	ut.TrackerInfo.MaxDownloadRate.Store(ut.downloadBucketWindow.updateMaxRate(download))
+ 	return n, addr, err
+@@ -222,6 +231,7 @@ func (ut *udpTracker) WaitReadFrom() (data []byte, put func(), addr net.Addr, er
+ 	if ut.pushToManager {
+ 		ut.manager.PushDownloaded(ut.Chains().Last(), download)
+ 	}
++	ut.lastActivity.Store(time.Now().UnixNano())
+ 	ut.DownloadTotal.Add(download)
+ 	ut.TrackerInfo.MaxDownloadRate.Store(ut.downloadBucketWindow.updateMaxRate(download))
+ 	return
+@@ -233,6 +243,7 @@ func (ut *udpTracker) WriteTo(b []byte, addr net.Addr) (int, error) {
+ 	if ut.pushToManager {
+ 		ut.manager.PushUploaded(ut.Chains().Last(), upload)
+ 	}
++	ut.lastActivity.Store(time.Now().UnixNano())
+ 	ut.UploadTotal.Add(upload)
+ 	ut.TrackerInfo.MaxUploadRate.Store(ut.uploadBucketWindow.updateMaxRate(upload))
+ 	return n, err
+@@ -337,3 +348,9 @@ func (w *bucketWindow) updateMaxRate(bytes int64) int64 {
+ 	w.mu.Unlock()
+ 	return result
+ }
++
++// LastActivity supports the HarmonyOS wrapper's idle connection cleanup.
++func (info *TrackerInfo) LastActivity() time.Time {
++ if last := info.lastActivity.Load(); last != 0 { return time.Unix(0,last) }
++ return info.Start
++}

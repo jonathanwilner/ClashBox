@@ -63,6 +63,7 @@ export class SocketProxyService implements IClashManager {
     return this.callbackRequest(ClashRpcType.registerOnMessage, [], observer)
   }
   async loadConfig(config: UpdateConfigParams): Promise<string> {
+    await this.setNetIpMacInfo();
     config['profile-id'] = config['profile-id'] + "/config"
     let result = await this.sendMessageRequest(ClashRpcType.load, [JSON.stringify(config)])
     return result as string
@@ -77,8 +78,12 @@ export class SocketProxyService implements IClashManager {
   }
   async setNetIpMacInfo(){
     try {
-      const table = await connection.getIpNeighTable()
-      const jsonParams = JSON.stringify(table);
+      const nets = await connection.getAllNets();
+      const links: connection.ConnectionProperties[] = [];
+      for (const net of nets) {
+        links.push(await connection.getConnectionProperties(net));
+      }
+      const jsonParams = JSON.stringify(links);
       let result = await this.sendMessageRequest(ClashRpcType.SetNetInterfaces, [jsonParams])
       return result as string;
     }catch (e) {
@@ -136,7 +141,7 @@ export class SocketProxyService implements IClashManager {
 
   async checkIpInfo(enableIpv6: boolean = true): Promise<IpInfo> {
 
-    this.setNetIpMacInfo();
+    await this.setNetIpMacInfo();
 
     await flushHttpConnections();
 

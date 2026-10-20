@@ -2,8 +2,8 @@
   "app": {
     "bundleName": "org.xbgroup.clashboxLTS",
     "vendor": "example",
-    "versionCode": 1007060,
-    "versionName": "1.7.6",
+    "versionCode": 1007061,
+    "versionName": "1.7.6-jw-ts",
     "icon": "$media:layered_image",
     "label": "$string:app_name"
   }
