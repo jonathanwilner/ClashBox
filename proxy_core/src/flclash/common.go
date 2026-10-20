@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -365,16 +364,24 @@ func patchSelectGroup() {
 func applyConfig(rawConfig *config.RawConfig) error {
 	runLock.Lock()
 	defer runLock.Unlock()
-	var err error
-	currentConfig, err = config.ParseRawConfig(rawConfig)
+	parsedConfig, err := config.ParseRawConfig(rawConfig)
 	if err != nil {
-		currentConfig, _ = config.ParseRawConfig(config.DefaultRawConfig())
+		return err // Preserve the live profile and enrolled adapters on invalid input.
 	}
+	currentConfig = parsedConfig
 	if configParams.IsPatch {
 		patchConfig()
 	} else {
 		handleCloseConnectionsUnLock()
-		runtime.GC()
+		// Release persistent tsnet state before starting replacement adapters.
+		// These are lazy-started during parsing, so validation above is side-effect free.
+		for _, proxy := range tunnel.ProxiesWithProviders() {
+			if proxy.Type() == constant.Tailscale {
+				if err := proxy.Adapter().Close(); err != nil {
+					log.Warnln("closing replaced Tailscale adapter: %v", err)
+				}
+			}
+		}
 		hub.ApplyConfig(currentConfig)
 		patchSelectGroup()
 	}

@@ -6,3 +6,4 @@ export { UpdateConfigParams } from "./src/main/ets/models/ClashConfig";
 export { ProxyGroup, ProxySort, ProxyType, LogLevel,LogInfo, Traffic,IpInfo, IpQualityInfo, Proxy,ConnectionInfo,Metadata, Provider,ProxyMode, SubscriptionInfo } from "./src/main/ets/models/Common"
 export { ClashConfig,Sniffer,SnifferDefault,Sniff,TunnelState, Dns, Tun, TunStack, RouteMode ,DnsEnhancedMode, defaultMixedPort, defaultKeepAliveInterval, DEFAULT_HOSTS, LEGACY_HOSTS_KEYS, TunnelEntry } from "./src/main/ets/models/ClashConfig";
 export { getHome } from "./src/main/ets/appPath"
+export { TailscaleProfile, TailscaleProfileSettings, TailscaleNodeStatus } from './src/main/ets/TailscaleProfile'

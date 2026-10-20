@@ -1,0 +1,97 @@
+--- /dev/null
++++ b/adapter/outbound/tailscale_status.go
+@@ -0,0 +1,51 @@
++//go:build with_gvisor && !no_tailscale
++
++package outbound
++
++import (
++	"context"
++	"fmt"
++)
++
++// The parser wraps every outbound; forward this optional settings capability.
++func (p *autoCloseProxyAdapter) EmbeddedStatus(ctx context.Context, login bool) (map[string]any, error) {
++	if status, ok := p.ProxyAdapter.(interface {
++		EmbeddedStatus(context.Context, bool) (map[string]any, error)
++	}); ok {
++		return status.EmbeddedStatus(ctx, login)
++	}
++	return nil, fmt.Errorf("proxy %s does not support embedded Tailscale status", p.Name())
++}
++
++// EmbeddedStatus exposes only enrollment and connectivity information to the
++// local settings page. Auth keys, node keys, and peer identities are excluded.
++func (t *Tailscale) EmbeddedStatus(ctx context.Context, login bool) (map[string]any, error) {
++	if err := t.start(); err != nil {
++		return nil, err
++	}
++	lc, err := t.server.LocalClient()
++	if err != nil {
++		return nil, err
++	}
++	status, err := lc.Status(ctx)
++	if err != nil {
++		return nil, err
++	}
++	if login && status.BackendState != "Running" {
++		if err := lc.StartLoginInteractive(ctx); err != nil {
++			return nil, err
++		}
++		status, err = lc.Status(ctx)
++		if err != nil {
++			return nil, err
++		}
++	}
++	ips := make([]string, 0, len(status.TailscaleIPs))
++	for _, ip := range status.TailscaleIPs {
++		ips = append(ips, ip.String())
++	}
++	return map[string]any{
++		"state": status.BackendState, "authURL": status.AuthURL,
++		"ips": ips, "peers": len(status.Peer), "health": status.Health,
++	}, nil
++}
+--- /dev/null
++++ b/adapter/outbound/tailscale_status_test.go
+@@ -0,0 +1,21 @@
++//go:build with_gvisor && !no_tailscale
++
++package outbound
++
++import (
++ "context"
++ "testing"
++)
++type statusProbe struct { ProxyAdapter; calls int }
++func (p *statusProbe) Name() string { return "probe" }
++func (p *statusProbe) Close() error { return nil }
++func (p *statusProbe) EmbeddedStatus(context.Context, bool) (map[string]any, error) { p.calls++; return map[string]any{"state":"NeedsLogin"}, nil }
++func TestEmbeddedStatusSurvivesAutoCloseWrapper(t *testing.T) {
++ p := &statusProbe{}
++ wrapped := NewAutoCloseProxyAdapter(p)
++ status, ok := wrapped.(interface { EmbeddedStatus(context.Context, bool) (map[string]any, error) })
++ if !ok { t.Fatal("settings capability lost in production wrapper") }
++ reply, err := status.EmbeddedStatus(context.Background(), true)
++ if err != nil || reply["state"] != "NeedsLogin" || p.calls != 1 { t.Fatalf("forwarding failed: %v %v calls=%d", reply, err, p.calls) }
++ if err := wrapped.Close(); err != nil { t.Fatal(err) }
++}
+--- /dev/null
++++ b/adapter/tailscale_status_test.go
+@@ -0,0 +1,16 @@
++//go:build with_gvisor && !no_tailscale
++
++package adapter
++
++import (
++ "context"
++ "testing"
++ C "github.com/metacubex/mihomo/constant"
++)
++func TestEmbeddedStatusAvailableAfterParseProxy(t *testing.T) {
++ C.SetHomeDir(t.TempDir())
++ proxy, err := ParseProxy(map[string]any{"name":"settings-test", "type":"tailscale", "hostname":"clashbox-test", "state-dir":"embedded-status-test"})
++ if err != nil { t.Fatal(err) }
++ defer proxy.Adapter().Close()
++ if _, ok := proxy.Adapter().(interface { EmbeddedStatus(context.Context, bool) (map[string]any, error) }); !ok { t.Fatal("parsed tailscale proxy hides enrollment status") }
++}

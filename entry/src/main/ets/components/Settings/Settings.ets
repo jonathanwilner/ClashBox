@@ -1,3 +1,4 @@
+import TailscaleSettings from './TailscaleSettings'
 
 import {
   BORDER_RADIUS_20,
@@ -62,6 +63,11 @@ struct Settings {
         pathStack: this.SettingsPageInfos
       })
       List({space: 10}) {
+        ListItem() {
+          Button('Tailscale · 内置组网')
+            .width('100%')
+            .onClick(() => this.SettingsPageInfos.pushPathByName('Tailscale', false))
+        }
         ForEach(this.settingsList, (item: settingsData, index: number) => {
           ListItem() {
             settingsListItem({
@@ -219,7 +225,9 @@ struct Settings {
   // 设置页路由表
   @Builder
   SettingsPagesMap(name: string) {
-    if (name == 'Appearance') {
+    if (name == 'Tailscale') {
+      TailscaleSettings()
+    } else if (name == 'Appearance') {
       Appearance()
     } else
       if (name == 'Backup') {

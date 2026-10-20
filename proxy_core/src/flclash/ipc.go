@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/tunnel"
 	"github.com/metacubex/mihomo/tunnel/statistic"
 
 	"github.com/metacubex/http"
@@ -51,7 +52,6 @@ func startIpcProxy(path string) {
 	}
 }
 func handleConnection(conn net.Conn) {
-	defer conn.Close()
 
 	request := RpcRequest{}
 	// Local sockets are streams: a request may span several reads, especially
@@ -60,15 +60,19 @@ func handleConnection(conn net.Conn) {
 	err := decodeIPCRequest(conn, &request)
 	_ = conn.SetReadDeadline(time.Time{})
 	if err == io.EOF {
+		_ = conn.Close()
 		return // A connect-only readiness probe sends no request.
 	}
 	if err != nil {
 		log.Println("ipc_go error", err)
+		_ = conn.Close()
 		return
 	}
-	handleRemoteRequest(request, func(rr RpcResult) {
-		res, _ := json.Marshal(rr)
-		conn.Write([]byte(string(res) + "EOF"))
+	serveIPCResponses(conn, request.Method == StartClash || request.Method == SetLogObserver, func(write func([]byte) error) {
+		handleRemoteRequest(request, func(rr RpcResult) {
+			res, _ := json.Marshal(rr)
+			_ = write(append(res, []byte("EOF")...))
+		})
 	})
 }
 
@@ -121,6 +125,7 @@ const (
 	HealthCheckAll
 	HealthCheckBatch
 	GetVersion
+	TailscaleStatus
 )
 
 func handleRemoteRequest(request RpcRequest, fn func(RpcResult)) {
@@ -129,6 +134,42 @@ func handleRemoteRequest(request RpcRequest, fn func(RpcResult)) {
 		Method: request.Method,
 	}
 	switch request.Method {
+	case TailscaleStatus:
+		if len(request.Params) == 0 {
+			ret.Error = "Tailscale node name is required"
+			fn(ret)
+			return
+		}
+		name, _ := request.Params[0].(string)
+		login := false
+		if len(request.Params) > 1 {
+			login, _ = request.Params[1].(bool)
+		}
+		proxy := tunnel.ProxiesWithProviders()[name]
+		if proxy == nil {
+			ret.Error = "Apply a profile containing this Tailscale node first"
+			fn(ret)
+			return
+		}
+		node, ok := proxy.Adapter().(interface {
+			EmbeddedStatus(context.Context, bool) (map[string]any, error)
+		})
+		if !ok {
+			ret.Error = "Selected proxy is not an embedded Tailscale node"
+			fn(ret)
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+		defer cancel()
+		status, err := node.EmbeddedStatus(ctx, login)
+		if err != nil {
+			ret.Error = err.Error()
+		} else {
+			data, _ := json.Marshal(status)
+			ret.Result = string(data)
+		}
+		fn(ret)
+
 	case QueryTrafficNow:
 		onlyProxy := true
 		if len(request.Params) > 1 {
@@ -260,9 +301,10 @@ func handleRemoteRequest(request RpcRequest, fn func(RpcResult)) {
 		log.Println("ipc_go", "tunFd", tunFd)
 		StartTUN(tunFd, func(fd Fd) {
 			res, _ := json.Marshal(fd)
-			ret.Result = string(res)
-			fn(ret)
+			// Socket hooks run concurrently. Each response owns its fd pair.
+			fn(RpcResult{Key: request.Key, Method: request.Method, Result: string(res)})
 		})
+		fn(RpcResult{Key: request.Key, Method: request.Method, Result: "ready"})
 	case StopClash:
 		StopTun()
 		fn(ret)

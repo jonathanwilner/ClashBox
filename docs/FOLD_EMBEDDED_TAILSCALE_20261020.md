@@ -1,17 +1,15 @@
 # Fold embedded Tailscale development build, 20 October 2026
 
-Status: native compilation, release packaging, signing and binary inspection pass.
-The corrected 32-byte TLS candidate launches and exposes the core API on the Fold.
-A separate inbound access-control regression caused immediate proxy disconnects.
-A runtime ACL patch restored Google and Baidu HTTPS with status 200. The durable
-ACL candidate still requires installation and restart acceptance. Embedded
-Tailscale registration and routing acceptance remain pending.
-
+Status: the visible Tailscale settings and VPN protection candidate is being
+validated offline. Earlier candidates confirmed profile/controller startup after
+IPC framing repair. Full embedded Tailscale enrollment, automatic VPN routing,
+and the new settings page still require device acceptance. Root is restoring the
+simpler MeshArc path while this candidate is completed.
 ## Source changes
 
 ClashBox 2.1.0 was unavailable for this build. The retained candidate backports
 the native changes into version `1.7.6-jw-ts` (`1007061`), bundle
-`org.xbgroup.clashboxLTS`. The 32-byte TLS repair is installed on the Fold.
+`org.xbgroup.clashboxLTS`. The candidate includes the 32-byte TLS repair. Current installation and routed-service acceptance must be verified on the Fold.
 The HarmonyOS bridge supplies local interface names, indices, MTUs and addresses
 from `connection.getAllNets()` and `getConnectionProperties()` before loading a
 profile. The former neighbor-table implementation described remote neighbors.
@@ -199,7 +197,7 @@ request decoder. Device acceptance of this parser repair remains pending.
 
 ## Required device acceptance
 
-Install the latest signed IPC framing candidate while preserving application data. Confirm the process
+Coordinate installation of the signed settings candidate below while preserving application data. Keep the working MeshArc recovery path until the cutover is explicitly coordinated. Confirm the process
 stays alive after launch and profile load, with no new Faultlogger crash. Verify
 Google and Baidu through the mixed port after restarting with the existing saved
 profile. Activate an embedded Tailscale profile, confirm interface discovery and
@@ -207,3 +205,53 @@ registration, and test uncached DNS, HTTPS, tailnet destinations and the intende
 China/US routing. Verify the single system VPN arrangement and browser traffic
 path. Embedded Tailscale runtime success remains unconfirmed until these checks
 complete.
+
+
+## Visible Tailscale settings and protected VPN startup
+
+The previous UI contained no Tailscale settings. Settings now has a visible
+**Tailscale · 内置组网** entry. The page reads the active profile's existing node
+name, hostname, state directory and control server. Node name and state directory
+are read-only, retaining the enrolled identity and existing references. The page
+provides a masked optional enrollment key, browser sign-in, connection status,
+Tailscale addresses, peer count, health messages and an accept-subnet-routes switch.
+The status RPC excludes keys and peer identities.
+
+Apply preserves existing proxy passwords, Hysteria2 protocol settings, China DNS
+and domain rules. It adds a direct embedded Tailscale node only when absent,
+chains tailnet-addressed proxy servers through it when no different explicit
+proxy chain exists, and prioritizes the tailnet CIDR rule. A first-write backup
+and persistent per-profile settings remain in the app sandbox. Saved settings
+are reapplied before profile loading, including after subscription updates.
+Existing authentication keys remain unchanged when the enrollment field is blank.
+A native profile-load error now raises an error instead of reporting success.
+
+Native IPC response connections now remain open until an asynchronous reply, or
+until the client disconnects for protect/log subscriptions. The prior unconditional
+close invalidated the protect callback after StartTUN returned. Writes are serialized
+and each protect event owns its response. The ArkTS receiver retains incomplete
+frames across stream reads. A native ready acknowledgement confirms hook installation
+before VPN startup completes. The selected profile is then reloaded to recreate
+Tailscale sockets under the protected connection, including after VPN restart.
+
+The offline checks include eleven tests of the production ArkTS methods and profile
+helper: navigation visibility, enrollment/status responses, fragmented protect
+messages, saved profile settings across subscription replacement, Hysteria2 and
+China policy preservation, readiness ordering, and profile failure cleanup. JSON
+serialization stands in for the YAML library in the profile helper tests. The
+actual ArkTS compiler validates the page and imported production YAML helper.
+Two Go core tests verify status forwarding through the real auto-close wrapper
+and its availability after the real `ParseProxy` path. Native IPC framing and
+asynchronous/streaming lifetime tests pass, including the Go race detector.
+
+Full profile replacement now validates the new configuration before replacing the
+live profile. It explicitly closes old Tailscale adapters before applying new
+adapters, releasing the tsnet state lock and old unprotected sockets. The core's
+DNS registration uses identity checks, so closing an old adapter preserves the
+new adapter's resolver registration. The auto-close wrapper forwards the optional
+status method. Profile load failures propagate through startup, clear the running
+flag and stop the newly acquired VPN before reporting failure.
+
+Device UI, interactive enrollment, VPN cutover and routed-service acceptance
+remain pending. The source tests and signed package do not establish device
+success. The Fold was not changed by this build lane.

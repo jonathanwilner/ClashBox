@@ -1,3 +1,4 @@
+import { TailscaleProfile } from 'proxy_core';
 import { ProfileRepo } from "proxy_core/src/main/ets/ProfileRepo";
 import { Context, Want } from "@kit.AbilityKit";
 import { SocketProxyService, Profile, ProfileType, UpdateConfigParams, ClashConfig, getHome,
@@ -415,15 +416,21 @@ export class ClashViewModel {
     } as UpdateConfigParams)
     if (result != ""){
       ClashViewModel.promptAction.showToast({message: result, duration: 3000 })
+      throw new Error(result)
     }
     EventHub.sendEvent(EventKey.FetchProxyGroup, null)
   }
   async ReStartVpn(){
     if(this.vpnStarted){
-      await this.loadConfig(false, 'ReStartVpn')
-      await this.loadVpnOptions()
-      await this.socketProxy.stopClash()
-      await this.socketProxy.startClash()
+      try {
+        await this.loadVpnOptions()
+        await this.socketProxy.stopClash()
+        if (!await this.socketProxy.startClash()) throw new Error('VPN protection did not become ready');
+        await this.loadConfig(false, 'ReStartVpn protected sockets')
+      } catch (e) {
+        await this.StopVpn()
+        throw new Error((e as Error).message || String(e))
+      }
     }
   }
   vpnStarted = false
@@ -431,14 +438,20 @@ export class ClashViewModel {
   // 启动前要加载配置
   // loadConfig
   async StartVpn(){
-    this.vpnStarted = true
+    this.vpnStarted = false
+    try {
     await this.loadVpnOptions()
     let result = await this.socketProxy.startClash()
     // 核心崩溃 小钥匙一直在，要重启两量变
     if (!result){
       result = await this.socketProxy.startClash()
     }
+    if (!result) throw new Error('VPN protection did not become ready');
     if (result){
+      // Recreate outbound adapters after the native protect hook is ready.
+      // Earlier local-proxy checks may have started unprotected tsnet sockets.
+      await this.loadConfig(false, 'StartVpn protected sockets')
+      this.vpnStarted = true
       EventHub.sendEvent(EventKey.StartedClash)
       EventHub.sendEvent(EventKey.checkIpInfo)
     }
@@ -459,6 +472,10 @@ export class ClashViewModel {
     })
 
     cardManager.pushCartProxyMode(this.vpnStarted)
+    } catch (e) {
+      await this.StopVpn()
+      throw new Error((e as Error).message || String(e))
+    }
   }
   async loadVpnOptions(){
     // 使用首选项持久化单个节点信息供卡片拉起服务
@@ -510,7 +527,7 @@ export class ClashViewModel {
 
   async StopVpn(){
     this.vpnStarted = false
-    this.socketProxy.stopClash()
+    await this.socketProxy.stopClash()
     // Index里的停止后操作
     EventHub.sendEvent(EventKey.StopedClash)
     // EntryAbility里的停止后操作
@@ -545,6 +562,8 @@ export class ClashViewModel {
     let clashConfig = AppStorage.get<ClashConfig>("clashConfig") || cardManager.getClashConfig()
     const profile = await this.profileRepo.query(appConfig?.currentProfileId)
     try {
+      if (!profile || !appConfig?.currentProfileId) throw new Error('Select a profile before connecting');
+      await TailscaleProfile.applySaved(this.context!, profile.id);
       await this.loadProfileAndConfig(appConfig?.currentProfileId ?? "", clashConfig, {
         "is-patch": patch,
         "is-compatible": true,
@@ -554,6 +573,7 @@ export class ClashViewModel {
       console.log(`ClashViewModel.loadConfig 调用方：${name} patch：${patch} 配加载成功`)
     } catch (e) {
       console.error('ClashViewModel.loadConfig 配置加载失败：', e)
+      throw new Error((e as Error).message || String(e))
     }
   }
 

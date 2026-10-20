@@ -39,7 +39,8 @@ export enum ClashRpcType{
   SetSystemDns,
   healthCheckAll,
   healthCheckBatch,
-  GetVersion
+  GetVersion,
+  TailscaleStatus
 }
 
 export interface AccessControl{

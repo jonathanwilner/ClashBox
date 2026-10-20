@@ -186,7 +186,7 @@ export class FlClashVpnService extends CommonVpnService {
     try {
       tunFd = await super.getTunFd(config)
       if (tunFd > -1) {
-        this.startClash(tunFd)
+        await this.startClash(tunFd)
       }
       return tunFd > -1;
     } catch (error) {
@@ -195,29 +195,45 @@ export class FlClashVpnService extends CommonVpnService {
     }
   }
 
-  startClash(tunFd: number) {
+  async startClash(tunFd: number): Promise<void> {
     this.clashSocket?.off('message')
     this.clashSocket?.close()
-    let tcp: socket.LocalSocket = socket.constructLocalSocketInstance();
+    const tcp: socket.LocalSocket = socket.constructLocalSocketInstance();
     this.clashSocket = tcp
-    tcp.on('message', (value: socket.LocalSocketMessageInfo) => {
-      let dd = this.textDecoder.decodeToString(new Uint8Array(value.message))
-      let list = dd.split("EOF")
-      for (let index = 0; index < list.length; index++) {
-        const element = list[index];
-        // 每个 fd 独立异步处理：Go 侧每个出站 socket 都等待 protect 完成（最长 5s），
-        // 串行 await 会让前一个 protect 阻塞后续 fd，后台 JS 线程受限时更易超时
-        // → socket 未保护 → 流量回环进 TUN → DNS 全断。
-        this.handleProtectMessage(element)
-      }
-    })
-    const socketPath = this.context?.filesDir + '/clash_go.sock'
-    console.error("ClashVPN connect", tunFd)
-    tcp.connect({ address: { address: socketPath }, timeout: 1000 }).then(() => {
-      console.error("ClashVPN connect", tunFd)
-      tcp.send({ data: JSON.stringify({ method: ClashRpcType.startClash, params: [tunFd] }) });
-    }).catch((e: Error) => {
-      console.error("ClashVPN  error ", e.message, e)
+    let pending = ''
+    await new Promise<void>((resolve, reject) => {
+      let ready = false
+      const timer = setTimeout(() => {
+        if (!ready) reject(new Error('VPN socket protection did not become ready'))
+      }, 8000)
+      tcp.on('message', (value: socket.LocalSocketMessageInfo) => {
+        pending += this.textDecoder.decodeToString(new Uint8Array(value.message), { stream: true })
+        let end = pending.indexOf('EOF')
+        while (end >= 0) {
+          const element = pending.substring(0, end)
+          pending = pending.substring(end + 3)
+          try {
+            const response = JSON.parse(element) as RpcResult
+            if (response.result === 'ready') {
+              ready = true
+              clearTimeout(timer)
+              resolve()
+            } else {
+              this.handleProtectMessage(element)
+            }
+          } catch (e) {
+            console.error('ClashVPN protect frame error', (e as Error).message)
+          }
+          end = pending.indexOf('EOF')
+        }
+      })
+      const socketPath = this.context?.filesDir + '/clash_go.sock'
+      tcp.connect({ address: { address: socketPath }, timeout: 1000 }).then(() => {
+        tcp.send({ data: JSON.stringify({ method: ClashRpcType.startClash, params: [tunFd] }) })
+      }).catch((e: Error) => {
+        clearTimeout(timer)
+        reject(e)
+      })
     })
   }
 

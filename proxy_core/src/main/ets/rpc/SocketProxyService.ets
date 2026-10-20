@@ -68,6 +68,9 @@ export class SocketProxyService implements IClashManager {
     let result = await this.sendMessageRequest(ClashRpcType.load, [JSON.stringify(config)])
     return result as string
   }
+  async tailscaleStatus(name: string, login: boolean = false): Promise<string> {
+    return await this.sendMessageRequest(ClashRpcType.TailscaleStatus, [name, login]) as string;
+  }
   async vailConfig(filepath: string){
     let result = await this.sendMessageRequest(ClashRpcType.validConfig, [filepath])
     return result as string;

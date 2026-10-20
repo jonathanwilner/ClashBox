@@ -8,6 +8,10 @@ if [ ! -f core/go.mod ]; then
  mkdir -p core; tar -xzf "$work/core.tar.gz" --strip-components=1 -C core
  patch -p1 -d core < "$project/scripts/patches/core-harmonyos-interfaces.patch"
 fi
+if ! grep -q 'func (p \*autoCloseProxyAdapter) EmbeddedStatus' core/adapter/outbound/tailscale_status.go 2>/dev/null; then
+ rm -f core/adapter/outbound/tailscale_status.go core/adapter/outbound/tailscale_status_test.go core/adapter/tailscale_status_test.go
+ patch -p1 -d core < "$project/scripts/patches/core-tailscale-settings-status.patch"
+fi
 if [ ! -f gvisor-ohos/go.mod ]; then
  curl -fL --retry 2 https://codeload.github.com/xfz347/ClashBox-gvisor-ohos/tar.gz/4dd36187f7714e0da03017394a566062ca8594d8 -o "$work/gvisor.tar.gz"
  mkdir -p gvisor-ohos; tar -xzf "$work/gvisor.tar.gz" --strip-components=1 -C gvisor-ohos
