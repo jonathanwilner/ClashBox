@@ -168,9 +168,38 @@ confirms both new success and bounded-retry failure diagnostic strings.
 [Readiness package/sign job](https://nix.thewilners.com/machines/armstrong/logs/build-sign-clashbox-fold-ready.txt)
 passed with protected signature verification.
 
+## IPC stream framing repair
+
+The installed readiness candidate reached native IPC, then logged method 28
+(`SetNetInterfaces`) followed by `unexpected end of JSON input`. The native
+handler read only once into a 10,240-byte buffer. A local stream socket may split
+JSON at any byte; network-property payloads can also exceed that buffer. This
+can reject interface initialization and block the selected profile from loading.
+
+The handler now decodes one complete JSON document from the stream, bounded to
+4 MiB and a ten-second read deadline. Empty connect-only readiness probes return
+without error logs. Response framing and subscription behavior remain unchanged.
+Regression tests cover method 28 with a string parameter containing encoded
+network properties larger than 10 KiB, fragmented into 17-byte reads. Tests also
+reject incomplete and oversized input and accept an empty readiness probe.
+
+[IPC request regression test](https://nix.thewilners.com/machines/armstrong/logs/test-clashbox-fold-ipc-params.txt)
+and [native library build](https://nix.thewilners.com/machines/armstrong/logs/build-clashbox-fold-ipc-framing.txt)
+passed. The unstripped native library SHA-256 is
+`401b94ba6357017afb1fe7706fd077cc9b35c11d6434cbd3eea7501ba266dbda`.
+The signed HAP is retained at
+`/home/jonathan/artifacts/clashbox-fold-ipc-framing-20261020/ClashBox-JW-1.7.6-jw-ts-Ultimate-signed.hap`.
+Its SHA-256 is
+`42c2d2c118171a91e142feb2e66e878c7927c3aa7d09a915b5300312dd743e3b`.
+The packaged native SHA-256 is
+`74ae6d20bfd4a7549a21367c437c0cb4f8769e294640ad5f7dff4313388bbcd1`.
+[IPC framing package/sign job](https://nix.thewilners.com/machines/armstrong/logs/build-sign-clashbox-fold-ipc-framing.txt)
+passed with protected `verify-app` success. The packaged library contains the new
+request decoder. Device acceptance of this parser repair remains pending.
+
 ## Required device acceptance
 
-Install the ACL candidate while preserving application data. Confirm the process
+Install the latest signed IPC framing candidate while preserving application data. Confirm the process
 stays alive after launch and profile load, with no new Faultlogger crash. Verify
 Google and Baidu through the mixed port after restarting with the existing saved
 profile. Activate an embedded Tailscale profile, confirm interface discovery and

@@ -53,15 +53,15 @@ func startIpcProxy(path string) {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	buffer := make([]byte, 10240)
-
-	n, err := conn.Read(buffer)
-	if err != nil {
-		log.Println("ipc_go", err)
-		return
-	}
 	request := RpcRequest{}
-	err = json.Unmarshal(buffer[:n], &request)
+	// Local sockets are streams: a request may span several reads, especially
+	// SetNetInterfaces with complete HarmonyOS network properties.
+	_ = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	err := decodeIPCRequest(conn, &request)
+	_ = conn.SetReadDeadline(time.Time{})
+	if err == io.EOF {
+		return // A connect-only readiness probe sends no request.
+	}
 	if err != nil {
 		log.Println("ipc_go error", err)
 		return
@@ -319,12 +319,12 @@ func handleRemoteRequest(request RpcRequest, fn func(RpcResult)) {
 		ret.Result = ""
 		fn(ret)
 	case HealthCheckBatch:
-	  paramsString, _ := request.Params[0].(string)
-	  handleAsyncTestDelayBatch(paramsString, func(value string) {
-	   ret.Result = value
-	   fn(ret)
-	  })
-	 case GetVersion:
+		paramsString, _ := request.Params[0].(string)
+		handleAsyncTestDelayBatch(paramsString, func(value string) {
+			ret.Result = value
+			fn(ret)
+		})
+	case GetVersion:
 		ver := constant.Version
 		if ver == "" {
 			ver = "Mihomo-release-v1.19.27"
