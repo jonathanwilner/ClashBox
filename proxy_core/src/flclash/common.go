@@ -61,7 +61,7 @@ func readFile(path string) ([]byte, error) {
 }
 
 func getProfilePath(id string) string {
-	return filepath.Join(constant.Path.HomeDir(), "profiles", id+".yaml")
+	return profileConfigPath(constant.Path.HomeDir(), id)
 }
 
 func getProfileProvidersPath(id string) string {
