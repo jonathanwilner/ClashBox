@@ -45,6 +45,8 @@ export class ClashViewModel {
     ClashViewModel.promptAction = promptAction
     await this.profileRepo.init(context)
     this.socketProxy.init(context)
+    // Populate embedded Tailscale interfaces even when profiles are loaded via HTTP.
+    await this.socketProxy.setNetIpMacInfo()
     await this.initGeoIp()
   }
   // 添加配置 url
@@ -374,6 +376,9 @@ export class ClashViewModel {
     })
     await sleep(600)
     let result = await this.checkVpnVpnAbility(requestId)
+    if (result && this.context) {
+      await this.socketProxy.setNetIpMacInfo()
+    }
     if (!result && restart) {
       ClashViewModel.promptAction.showToast({message:"VpnAbility请求失败! 请重启应用"})
     }

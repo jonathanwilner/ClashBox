@@ -87,7 +87,8 @@ export class SocketProxyService implements IClashManager {
       let result = await this.sendMessageRequest(ClashRpcType.SetNetInterfaces, [jsonParams])
       return result as string;
     }catch (e) {
-      console.warn("setNetIpMacInfo 不支持注入网卡信息")
+      const error = e as Error;
+      console.error(`HarmonyOS interface injection failed: ${error.name}: ${error.message}; ${JSON.stringify(e)}`)
     }
     return "";
   }

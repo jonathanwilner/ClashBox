@@ -115,6 +115,35 @@ passed. Published dashboard jobs:
 - [Native ACL build](https://nix.thewilners.com/machines/armstrong/logs/build-clashbox-fold-native-acl.txt)
 - [ACL release package and protected signing](https://nix.thewilners.com/machines/armstrong/logs/build-sign-clashbox-fold-acl.txt)
 
+## Interface bridge permission and startup repair
+
+The isolated embedded Tailscale probe reported `HarmonyOS local link properties
+have not been supplied`. Interface injection previously ran only before UI
+profile loading or IP checks. A profile loaded through the HTTP API bypasses
+those calls.
+
+The entry source omitted `ohos.permission.GET_NETWORK_INFO`, which the installed
+HarmonyOS 26 SDK requires for `getAllNets` and `getConnectionProperties`. Inspection
+of the previous signed HAP's merged module metadata confirmed that a dependency
+already supplied this permission. The entry omission alone therefore does not
+explain the installed failure. The permission is now explicit in entry source.
+
+The entry module now requests the permission. Interface injection runs when the
+view model initializes and after a successful core restart, as well as before UI
+profile loads. This supplies the cache for profiles loaded through the HTTP API.
+Bridge failures now retain the error name, message and structured error in logs.
+Device confirmation of interface population and Tailscale registration is pending.
+
+The signed startup candidate is retained at
+`/home/jonathan/artifacts/clashbox-fold-interface-startup-20261020/ClashBox-JW-1.7.6-jw-ts-Ultimate-signed.hap`.
+Its SHA-256 is
+`2b8f42a6f9960578fa08cfc154f0b1f6c61d79db970bfc5499801cc5f8fad5de`.
+The packaged native hash remains
+`10ce54492ec5498aef1f0bdccefeaa73e29035e8ba2b50e33a41caec1819e705`.
+The signed HAP contains the updated diagnostic string and permission metadata.
+[Startup bridge package/sign job](https://nix.thewilners.com/machines/armstrong/logs/build-sign-clashbox-fold-interface.txt)
+passed with protected signature verification. Device acceptance is pending.
+
 ## Required device acceptance
 
 Install the ACL candidate while preserving application data. Confirm the process
