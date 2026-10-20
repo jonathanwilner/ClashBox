@@ -207,7 +207,7 @@ func getCurrentProfileName(env js.Env, this js.Value, args []js.Value) any {
 func setFdMap(env js.Env, this js.Value, args []js.Value) any {
 	fdInt, _ := napi.GetValueInt32(env.Env, args[0].Value)
 	go func() {
-		fdMap.Store(int64(fdInt))
+		acknowledgeSocketProtection(int64(fdInt), &fdMap.m, &fdWaitMap.m)
 	}()
 	return nil
 }

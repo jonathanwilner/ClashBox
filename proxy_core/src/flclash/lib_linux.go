@@ -223,14 +223,7 @@ func StopTun() {
 func SetFdMap(fd C.long) {
 	fdInt := int64(fd)
 	go func() {
-		fdMap.Store(fdInt)
-		// 通知等待的 initSocketHook 协程，避免忙等待轮询
-		if ch, ok := fdWaitMap.Load(fdInt); ok {
-			select {
-			case ch <- struct{}{}:
-			default:
-			}
-		}
+		acknowledgeSocketProtection(fdInt, &fdMap.m, &fdWaitMap.m)
 	}()
 }
 
