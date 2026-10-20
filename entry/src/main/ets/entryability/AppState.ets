@@ -55,7 +55,7 @@ export class AppConfig {
   enableConnect: boolean = false
   accessControl: boolean = false
   testUrl: string = "https://remote.thewilners.com/generate_204"
-  clashCore: ClashCore = ClashCore.ClashMeta
+  clashCore: ClashCore = ClashCore.mihomo
   switchMode: ProxyMode = ProxyMode.Rule
   constructor() {
   }

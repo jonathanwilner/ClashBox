@@ -82,8 +82,7 @@ export default class EntryAbility extends UIAbility {
     hilog.info(0x0000, 'EntryAbility', '%{public}s', 'Ability onCreate');
     // 赋值临时储存want
     this.want = want
-    // 优先级最高-初始化内核
-    await ClashViewModel.ChangeCore(undefined, false)
+    // ClashCoreInit starts the VPN after ClashViewModel.init supplies its context.
     // 卡片Id持久化管理 并 监听卡片事件
     cardManager.init(this.context)
     this.registerCardEvent()
