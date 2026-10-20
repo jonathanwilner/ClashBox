@@ -2,6 +2,7 @@ import { socket } from '@kit.NetworkKit';
 import { common } from '@kit.AbilityKit';
 import { CommonVpnService } from './CommonVpnService';
 import { FlClashVpnService } from './FlClashVpnService';
+import { SocketProxyService } from './SocketProxyService';
 import { startIpc } from 'libflclash.so';
 import { fileIo } from '@kit.CoreFileKit';
 import { util } from '@kit.ArkTS';
@@ -15,11 +16,11 @@ export class SocketStubService {
   constructor( context: common.Context) {
     this.clientPool = new Map()
     this.vpnService = new FlClashVpnService(context)
-    this.vpnService.init()
   }
 
   async startService(requestId: number){
     try {
+      await this.vpnService.init()
       const socketPath = this.vpnService.context.filesDir + '/ClashBox.sock'
       const goPath = this.vpnService.context.filesDir + '/clash_go.sock'
       // 清理上次进程残留的 socket 文件(强杀/异常退出时 onDestroy 未执行)，
@@ -47,6 +48,10 @@ export class SocketStubService {
             this.clientPool.delete(client.clientId);
           });
       })
+      // The native cache belongs to this core process. Populate it before ready.
+      const interfaceBridge = new SocketProxyService();
+      interfaceBridge.init(this.vpnService.context);
+      await interfaceBridge.setNetIpMacInfo();
       await this.lockVpn(requestId)
     } catch (e) {
       console.error("socket failure", e.message)

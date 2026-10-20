@@ -77,20 +77,29 @@ export class SocketProxyService implements IClashManager {
     return result as string;
   }
   async setNetIpMacInfo(){
-    try {
-      const nets = await connection.getAllNets();
-      const links: connection.ConnectionProperties[] = [];
-      for (const net of nets) {
-        links.push(await connection.getConnectionProperties(net));
+    let lastError = '';
+    for (let attempt = 0; attempt < 12; attempt++) {
+      try {
+        if (!await this.isSocketReady()) {
+          lastError = 'native IPC socket is not ready';
+        } else {
+          const nets = await connection.getAllNets();
+          const links: connection.ConnectionProperties[] = [];
+          for (const net of nets) {
+            links.push(await connection.getConnectionProperties(net));
+          }
+          const result = await this.sendMessageRequest(ClashRpcType.SetNetInterfaces, [JSON.stringify(links)]);
+          console.info(`HarmonyOS interface injection succeeded: ${links.length} networks`);
+          return result as string;
+        }
+      } catch (e) {
+        const error = e as Error;
+        lastError = `${error.name}: ${error.message}; ${JSON.stringify(e)}`;
       }
-      const jsonParams = JSON.stringify(links);
-      let result = await this.sendMessageRequest(ClashRpcType.SetNetInterfaces, [jsonParams])
-      return result as string;
-    }catch (e) {
-      const error = e as Error;
-      console.error(`HarmonyOS interface injection failed: ${error.name}: ${error.message}; ${JSON.stringify(e)}`)
+      await new Promise<void>((resolve) => { setTimeout(resolve, 250); });
     }
-    return "";
+    console.error(`HarmonyOS interface injection failed after bounded retry: ${lastError}`);
+    return '';
   }
   async setSystemDns(dns: string){
     try {

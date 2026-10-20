@@ -144,6 +144,30 @@ The signed HAP contains the updated diagnostic string and permission metadata.
 [Startup bridge package/sign job](https://nix.thewilners.com/machines/armstrong/logs/build-sign-clashbox-fold-interface.txt)
 passed with protected signature verification. Device acceptance is pending.
 
+## Native IPC readiness repair
+
+The installed startup candidate logged `Connection refused` during UI interface
+injection before the VPN core process started. Interface initialization now runs
+inside `SocketStubService.startService`, after awaited native initialization,
+IPC startup and stub listener setup, and before writing the ready lock. This
+also covers background core startup. The premature UI initialization call is
+removed. Interface injection checks socket readiness and retries up to twelve
+times with 250 ms delays, retaining the final error and logging successful network
+counts.
+
+The UI core readiness check now requires the matching request lock and a live
+native socket, with forty attempts separated by 250 ms. A missing lock returns
+false. Device proof of the repaired startup sequence remains pending.
+
+The signed readiness candidate is retained at
+`/home/jonathan/artifacts/clashbox-fold-ipc-ready-20261020/ClashBox-JW-1.7.6-jw-ts-Ultimate-signed.hap`.
+Its SHA-256 is
+`72494b054c1a64e7eccc01b623f64ae26de842f191088e07a5630f641d08db96`.
+Its native library hash is unchanged from the ACL candidate. Bytecode inspection
+confirms both new success and bounded-retry failure diagnostic strings.
+[Readiness package/sign job](https://nix.thewilners.com/machines/armstrong/logs/build-sign-clashbox-fold-ready.txt)
+passed with protected signature verification.
+
 ## Required device acceptance
 
 Install the ACL candidate while preserving application data. Confirm the process

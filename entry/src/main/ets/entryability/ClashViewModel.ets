@@ -45,8 +45,6 @@ export class ClashViewModel {
     ClashViewModel.promptAction = promptAction
     await this.profileRepo.init(context)
     this.socketProxy.init(context)
-    // Populate embedded Tailscale interfaces even when profiles are loaded via HTTP.
-    await this.socketProxy.setNetIpMacInfo()
     await this.initGeoIp()
   }
   // 添加配置 url
@@ -374,10 +372,17 @@ export class ClashViewModel {
         reject(false)
       }, 10000)
     })
-    await sleep(600)
-    let result = await this.checkVpnVpnAbility(requestId)
-    if (result && this.context) {
-      await this.socketProxy.setNetIpMacInfo()
+    let result = false
+    if (coreType !== undefined && coreType !== ClashCore.mihomo) {
+      result = true; // The caller starts the foreground development core next.
+    } else if (this.context) {
+      for (let attempt = 0; attempt < 40; attempt++) {
+        if (await this.checkVpnVpnAbility(requestId) && await this.socketProxy.isSocketReady()) {
+          result = true;
+          break;
+        }
+        await sleep(250)
+      }
     }
     if (!result && restart) {
       ClashViewModel.promptAction.showToast({message:"VpnAbility请求失败! 请重启应用"})
@@ -386,11 +391,11 @@ export class ClashViewModel {
   }
 
   private async checkVpnVpnAbility(reqId: number): Promise<boolean>{
-    let lockPath = this.context?.filesDir + '/vpn_ipc.lock';
+    if (!this.context) return false;
+    let lockPath = this.context.filesDir + '/vpn_ipc.lock';
     try {
       if (!await fs.access(lockPath, fs.AccessModeType.EXIST)) {
-        console.log('ClashViewModel.checkVpnVpnAbility 检查文件vpn_ipc.lock是否存在 access成功：', true)
-        return true;
+        return false;
       } else {
         let requestId = await readText(lockPath)
         console.log('ClashViewModel.checkVpnVpnAbility 检查文件vpn_ipc.lock是否存在 readText成功：', requestId == reqId + "")
